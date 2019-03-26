@@ -4,22 +4,14 @@ import sys
 import random
 from student import Student
 
-FIELDS = ['ID','CLASS','CRN','TREE','BRANCH','COURSE_CEILING',
-          'MAJOR','MAJOR2','SUBJ','NUMB','SEQ']
+from __future__ import print_function
+from ortools.linear_solver import pywraplp
+
+FIELDS = ['ID', 'CLASS', 'CRN', 'TREE', 'BRANCH', 'COURSE_CEILING',
+          'MAJOR', 'MAJOR2', 'SUBJ', 'NUMB', 'SEQ']
+
 
 def read_file(filename):
-    """Returns data read in from supplied WebTree data file.
-
-    Parameters:
-        filename - string containing the name of the CSV file.
-
-    Returns:
-        a) A dictionary mapping student IDs to records, where each record
-           contains information about that student's WebTree requests.
-        b) A dictionary mapping class years to student IDs, indicating
-           which students are seniors, juniors, etc.
-        c) A dictionary mapping course CRNs to enrollment capacities.
-    """
     with open(filename, 'r') as csvfile:
         reader = csv.DictReader(csvfile, fieldnames=FIELDS)
         student_requests = {}
@@ -36,150 +28,77 @@ def read_file(filename):
             crn = int(row['CRN'])
             tree = int(row['TREE'])
             branch = int(row['BRANCH'])
-            if id in student_requests: # does this student already exist?
+            if id in student_requests:  # does this student already exist?
                 student_requests[id].add_request(crn, tree, branch)
-            else: # nope, create a new record
+            else:  # nope, create a new record
                 s = Student(id, class_year)
                 s.add_request(crn, tree, branch)
                 student_requests[id] = s
 
             students_by_class[class_year].add(id)
             courses[crn] = int(row['COURSE_CEILING'])
-            
+
     return student_requests, students_by_class, courses
 
 
-def assign_random_numbers(students_by_class):
-    """Returns four randomly permuted orderings representing the order in
-    which students will receive courses from the scheduler.
-
-    While each student is assigned four random positions, only two of the
-    positions are independently random; the other two are computed as a
-    complement of the class size.
-
-    Parameters:
-        students_by_class - a dictionary mapping class years to student
-                            IDs, indicating which students are seniors,
-                            juniors, etc.
-                            
-    Returns:
-        A dictionary mapping class year to a list of four lists, each
-        of which represents the scheduling order for the appropriate pass.
-    """
-    random_ordering = {}
-    # Randomly permute the ordering of students in each class year.
-    for class_year in students_by_class:
-        students = students_by_class[class_year]
-        
-        # list1 and list3 are independently random permutations; list2 and
-        # list4 are the complements of number1 and number3 wrt the class size.
-        list1 = list(students)
-        random.shuffle(list1)
-        list2 = list1[::-1]
-        list3 = list(students)
-        random.shuffle(list3)
-        list4 = list3[::-1]
-
-        random_ordering[class_year] = [list1, list2, list3, list4]
-
-    return random_ordering
-
-
-def assign_student(student, courses):
-    """Returns a course (CRN #) for the specified student.
-
-    The student's stated preferences and current enrollment limits in the
-    requested classes are taken into account when making the determination.
-    If no class can be found, this function returns None.
-
-    Parameters:
-        student - a Student object corresponding to the student being assigned.
-
-    Returns:
-        A CRN number (int) representing this student's next assignment. None
-        if no course can be found.
-    """
-    while (student.can_advance_preference()):
-        try:
-            requested_course = student.get_next_course()
-            if (courses[requested_course] > 0): # there is space!
-                courses[requested_course] -= 1
-                student.advance_preference(True)
-                return requested_course
-        except KeyError: # student didn't fill in preference, continue
-            pass
-        
-        # No space (or student didn't specify this node), try next course
-        student.advance_preference(False)
-
-    # No courses can be assigned
-    return None
-
-
-def run_webtree(student_requests, students_by_class, courses, random_ordering):
-    """Runs the WebTree algorithm and returns an assignment of students to
-    courses (CRNs).
-
-    Parameters:
-        See descriptions from other function headers.
-
-    Returns:
-        A dictionary mapping each student id to a list assigned courses (CRNs).
-    """
-    assignments = {}
-    # Initially, no one has any courses assigned
-    for id in student_requests:
-        assignments[id] = []
-        
-    # Course assignment is a 4-pass process. Students in the class
-    # 'OTHER' get to go after we cycle through SENIORS-->FIRST_YEARS
-    # first. The registrar seems to handle them arbitrarily anyway.
-    for i in range(4):
-        for class_year in ['SENI', 'JUNI', 'SOPH', 'FRST', 'OTHER']:
-            students = random_ordering[class_year][i]
-            for student_id in students:
-                course = assign_student(student_requests[student_id], courses)
-                if course != None:
-                    assignments[student_id].append(course)
-
-    # Note: apparently, WebTree does a second pass at this point to "fill out"
-    # student schedules further (especially those who received fewer than 4
-    # courses). But again, details are unclear and no one can quite describe
-    # what *precisely* happens during this phase. So we skip that here.
-                                        
-    return assignments
-
-
 def main():
-    if (len(sys.argv) != 2):
-        print()
-        print("***********************************************************")
-        print("You need to supply a .csv file containing the WebTree data")
-        print("as a command-line argument.")
-        print()
-        print("Example:")
-        print("    python baseline_webtree.py spring-2015.csv")
-        print("***********************************************************")
-        print()
-        return
-    
-    # Read in data
-    student_requests, students_by_class, courses = read_file(sys.argv[1])
+    solver = pywraplp.Solver('SolveIntegerProblem',
+                             pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
-    # Assign random numbers
-    random_ordering = assign_random_numbers(students_by_class)
+    # x and y are integer non-negative variables.
+    x = solver.IntVar(0.0, solver.infinity(), 'x')
+    y = solver.IntVar(0.0, solver.infinity(), 'y')
+    num_vals = 500
+    varList = []
 
-    # Run webtree
-    assignments = run_webtree(student_requests, students_by_class,
-                              courses, random_ordering)
+    for i in range(num_vals):
+        varName = "" + str(i)
+        varList.append(solver.IntVar(0.0, 1.0, varName))
 
-    # Print results to stdout
-    for id in assignments:
-        print(id),
-        for course in assignments[id]:
-            print(course),
-        print()
+    print(varList[0])
+#   solver.SetCoefficient()
 
-        
-if __name__ == "__main__":
+    # x + 7 * y <= 17.5
+    constraint1 = solver.Constraint(-solver.infinity(), 17.5)
+    constraint1.SetCoefficient(x, 1)
+    constraint1.SetCoefficient(y, 7)
+
+    # x <= 3.5
+    constraint2 = solver.Constraint(-solver.infinity(), 3.5)
+    constraint2.SetCoefficient(x, 1)
+    constraint2.SetCoefficient(y, 0)
+
+    # Maximize x + 10 * y.
+    objective = solver.Objective()
+    objective.SetCoefficient(x, 1)
+    objective.SetCoefficient(y, 10)
+    for i in range(num_vals):
+        name = "" + str(i)
+        objective.SetCoefficient(name, 9)
+
+    objective.SetMaximization()
+
+    """Solve the problem and print the solution."""
+    result_status = solver.Solve()
+    # The problem has an optimal solution.
+    assert result_status == pywraplp.Solver.OPTIMAL
+
+    # The solution looks legit (when using solvers other than
+    # GLOP_LINEAR_PROGRAMMING, verifying the solution is highly recommended!).
+    assert solver.VerifySolution(1e-7, True)
+
+    print('Number of variables =', solver.NumVariables())
+    print('Number of constraints =', solver.NumConstraints())
+
+    # The objective value of the solution.
+    print('Optimal objective value = %d' % solver.Objective().Value())
+    print()
+    # The value of each variable in the solution.
+    variable_list = [x, y]
+
+    for variable in variable_list:
+        print('%s = %d' % (variable.name(), variable.solution_value()))
+
+
+if __name__ == '__main__':
     main()
