@@ -59,7 +59,9 @@ def class_preference(tree, branch):
 
 def main():
   # Read in csv file data
-  student_requests, students_by_class, courses = read_file(sys.argv[1])
+  read_file_name = sys.argv[1]
+  student_requests, students_by_class, courses = read_file(read_file_name)
+  write_file_name = read_file_name.replace(".csv", "-output.csv")
 
   # Declare assignment & cost/point matrix
   class_assign = {}
@@ -102,7 +104,7 @@ def main():
       class_assign[i, j] = solver.BoolVar('class_assign[%i,%i]' % (i, j))
 
   # Objective
-  solver.Minimize(solver.Sum([class_weight[i][j] * class_assign[i,j] for i in range(len(student_requests))
+  solver.Maximize(solver.Sum([class_weight[i][j] * class_assign[i,j] for i in range(len(student_requests))
                                                   for j in range(len(course_list))]))
 
   # Constraints
@@ -115,7 +117,7 @@ def main():
   # Each task is assigned to exactly one worker.
 
   for j in range(len(course_list)):
-    solver.Add(solver.Sum([class_assign[i, j] for i in range(len(student_requests))]) == courses[course_list[i]])
+    solver.Add(solver.Sum([class_assign[i, j] for i in range(len(student_requests))]) <= courses[course_list[j]])
 
   # Each team takes on two tasks.
 
@@ -123,17 +125,39 @@ def main():
   # solver.Add(solver.Sum([x[i, j] for i in team2 for j in range(num_tasks)]) <= team_max)
   sol = solver.Solve()
 
-  # print('Total cost = ', solver.Objective().Value())
-  # print()
-  # for i in range(len(student_requests)):
-  #   for j in range(len(course_list)):
-  #     if class_assign[i, j].solution_value() > 0:
-  #       print('Student %d assigned to task %d.  Cost = %d' % (
-  #             i,
-  #             j,
-  #             cost[i][j]))
-
-  print()
-  print("Time = ", solver.WallTime(), " milliseconds")
+  with open(write_file_name, 'w', newline='') as f:
+    output = csv.writer(f)
+    # output.writerow(['Spam'] * 5 + ['Baked Beans'])
+    # spamwriter.writerow(['Spam', 'Lovely Spam', 'Wonderful Spam'])
+    output.writerow(['Total score =', str(solver.Objective().Value())])
+    
+    output_nested_list = []
+    
+    for i in range(len(student_requests)):
+      temp_output_list = []
+      temp_output_list.append(str(i + 1))
+      for j in range(len(course_list)):
+        if class_assign[i, j].solution_value() > 0:
+          temp_output_list.append(str(course_list[j]))
+          # print('Student %d assigned to task %d.  Cost = %d' % (
+          #       i,
+          #       j,
+          #       class_weight[i][j]))
+      output_nested_list.append(temp_output_list)
+      output.writerow(temp_output_list)
+    # print()
+    output.writerow(["Time = ", solver.WallTime(), " milliseconds"])
+    # print('Total points = ', solver.Objective().Value())
+    # print()
+    # for i in range(len(student_requests)):
+    #   for j in range(len(course_list)):
+    #     if class_assign[i, j].solution_value() > 0:
+    #       print('Student %d assigned to task %d.  Cost = %d' % (
+    #             i,
+    #             j,
+    #             class_weight[i][j]))
+    #   print()
+    # print()
+    # print("Time = ", solver.WallTime(), " milliseconds")
 if __name__ == '__main__':
   main()
