@@ -134,13 +134,24 @@ def run_webtree(student_requests, students_by_class, courses, random_ordering):
     # Course assignment is a 4-pass process. Students in the class
     # 'OTHER' get to go after we cycle through SENIORS-->FIRST_YEARS
     # first. The registrar seems to handle them arbitrarily anyway.
+    assignment_score = 0
+
     for i in range(4):
         for class_year in ['SENI', 'JUNI', 'SOPH', 'FRST', 'OTHER']:
             students = random_ordering[class_year][i]
             for student_id in students:
                 course = assign_student(student_requests[student_id], courses)
+
+                requests_values_list = list(student_requests[student_id].requests.values())
+                requests_key_list = list(student_requests[student_id].requests.keys())
+
                 if course != None:
+                    branch = (requests_key_list[requests_values_list.index(course)])[0]
+                    tree = (requests_key_list[requests_values_list.index(course)])[1]
+                    assignment_score += class_preference(tree, branch)
+                    # print(class_preference(tree, branch))
                     assignments[student_id].append(course)
+    print(assignment_score)
 
     # Note: apparently, WebTree does a second pass at this point to "fill out"
     # student schedules further (especially those who received fewer than 4
@@ -149,6 +160,13 @@ def run_webtree(student_requests, students_by_class, courses, random_ordering):
                                         
     return assignments
 
+def class_preference(tree, branch):
+    weight = 0
+    if (branch < 4):
+        weight = branch * tree
+    else:
+        weight = 21 + branch
+    return 26 - weight
 
 def main():
     if (len(sys.argv) != 2):
@@ -173,12 +191,12 @@ def main():
     assignments = run_webtree(student_requests, students_by_class,
                               courses, random_ordering)
 
-    # Print results to stdout
-    for id in assignments:
-        print(id),
-        for course in assignments[id]:
-            print(course),
-        print()
+    # # Print results to stdout
+    # for id in assignments:
+    #     print(id),
+    #     for course in assignments[id]:
+    #         print(course),
+    #     print()
 
         
 if __name__ == "__main__":
