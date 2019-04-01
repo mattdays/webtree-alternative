@@ -7,6 +7,9 @@ from student import Student
 FIELDS = ['ID','CLASS','CRN','TREE','BRANCH','COURSE_CEILING',
           'MAJOR','MAJOR2','SUBJ','NUMB','SEQ']
 
+CLASS_MULTIPLIERS = {'SENI': 2.00, 'JUNI': 1.75, 'SOPH': 1.50, 'FRST': 1.25, 'OTHER': 1.0}
+
+
 def read_file(filename):
     """Returns data read in from supplied WebTree data file.
 
@@ -148,7 +151,7 @@ def run_webtree(student_requests, students_by_class, courses, random_ordering):
                 if course != None:
                     branch = (requests_key_list[requests_values_list.index(course)])[0]
                     tree = (requests_key_list[requests_values_list.index(course)])[1]
-                    assignment_score += class_preference(tree, branch)
+                    assignment_score += CLASS_MULTIPLIERS[class_year] * class_preference(tree, branch)
                     # print(class_preference(tree, branch))
                     assignments[student_id].append(course)
     print(assignment_score)
@@ -183,6 +186,8 @@ def main():
     
     # Read in data
     student_requests, students_by_class, courses = read_file(sys.argv[1])
+
+    # print(students_by_class.keys())
 
     # Assign random numbers
     random_ordering = assign_random_numbers(students_by_class)

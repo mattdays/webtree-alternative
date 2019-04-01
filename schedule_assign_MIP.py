@@ -11,13 +11,16 @@ from ortools.linear_solver import pywraplp
 FIELDS = ['ID', 'CLASS', 'CRN', 'TREE', 'BRANCH', 'COURSE_CEILING',
           'MAJOR', 'MAJOR2', 'SUBJ', 'NUMB', 'SEQ']
 
+CLASS_MULTIPLIERS = {'SENI': 2.00, 'JUNI': 1.75, 'SOPH': 1.50, 'FRST': 1.25, 'OTHER': 1.0}
+
 def read_file(filename):
     with open(filename, 'r') as csvfile:
         reader = csv.DictReader(csvfile, fieldnames=FIELDS)
         student_requests = {}
-        students_by_class = {'SENI': set([]), 'JUNI': set([]),
-                             'SOPH': set([]), 'FRST': set([]),
-                             'OTHER': set([])}
+        # students_by_class = {'SENI': set([]), 'JUNI': set([]),
+        #                      'SOPH': set([]), 'FRST': set([]),
+        #                      'OTHER': set([])}
+        students_by_class = {}
         courses = {}
         next(reader)
         # reader.next() # consume the first line, which is just column headers
@@ -38,8 +41,10 @@ def read_file(filename):
                 student_requests[id] = []
                 temp_tup = (crn, tree, branch)
                 student_requests.get(id).append(temp_tup)
+                students_by_class[id] = class_year
 
-            students_by_class[class_year].add(id)
+
+            # students_by_class[id].add(class_year)
             courses[crn] = int(row['COURSE_CEILING'])
 
     return student_requests, students_by_class, courses
@@ -61,6 +66,9 @@ def main():
   # Read in csv file data
   read_file_name = sys.argv[1]
   student_requests, students_by_class, courses = read_file(read_file_name)
+
+  # print(students_by_class)
+  
   write_file_name = read_file_name.replace(".csv", "-output.csv")
 
   # Declare assignment & cost/point matrix
@@ -96,13 +104,27 @@ def main():
   for i in range(len(student_requests)):
     sr_list = student_requests.get(i+1)
 
+#   779== 780
+
+    class_year = students_by_class.get(i+1)
+    # print(class_year)
+
+    # print(class_year)
+
+
     for j in range(len(course_list)):
       for k in range(len(sr_list)):
         temp = class_preference(sr_list[k][1], sr_list[k][2])
-        class_weight[i][course_list.index(sr_list[k][0])] = temp
+        temp_class = CLASS_MULTIPLIERS[class_year]
+        # print(temp_class)
+        class_weight[i][course_list.index(sr_list[k][0])] = temp_class * temp
         # print("Here")
       class_assign[i, j] = solver.BoolVar('class_assign[%i,%i]' % (i, j))
-
+    
+    # if (i == 1735):
+    #   print(i)
+    #   print(class_year)
+    #   print(sr_list)
   # Objective
   solver.Maximize(solver.Sum([class_weight[i][j] * class_assign[i,j] for i in range(len(student_requests))
                                                   for j in range(len(course_list))]))
