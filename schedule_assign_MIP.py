@@ -51,16 +51,34 @@ def read_file(filename):
 
 # def populate_matrices(student_requests, courses):
 #   class_assign = {}
-#   class_weight = [[0 for x in range(len(courses.keys()))] for y in range(len(student_requests))] 
+#   class_weight = [[0 for x in range(len(courses.keys()))] for y in range(len(student_requests))]
 #   return 0
 
 def class_preference(tree, branch):
-  weight = 0
-  if (branch < 4):
-    weight = branch * tree
-  else:
-    weight = 21 + branch
-  return 26 - weight
+    weight = 0
+    diversions = 0
+
+    if (branch < 4):
+        weight = branch * tree
+    else:
+        weight = 21 + branch
+    # conversions to diversions
+    if ((weight == 25) or (weight == 24) or (weight == 22)):
+        diversions += 7
+    elif((weight == 23) or (weight == 21) or (weight == 20) or (weight == 18) or (weight == 17) or (weight == 15) or (weight == 4)):
+        diversions += 6
+    elif((weight == 19) or (weight == 16) or (weight == 14) or (weight == 13) or (weight == 11) or (weight == 10) or (weight == 8)):
+        diversions += 5
+    elif((weight == 12) or (weight == 9) or (weight == 7) or (weight == 6)):
+        diversions += 4
+    elif((weight == 5) or (weight == 3)):
+        diversions += 3
+    elif(weight == 2):
+        diversions += 2
+    elif(weight == 1):
+        diversions += 1
+
+    return diversions
 
 def main():
   # Read in csv file data
@@ -68,16 +86,16 @@ def main():
   student_requests, students_by_class, courses = read_file(read_file_name)
 
   # print(students_by_class)
-  
+
   write_file_name = read_file_name.replace(".csv", "-output.csv")
 
   # Declare assignment & cost/point matrix
   class_assign = {}
-  class_weight = [[0 for x in range(len(courses.keys()))] for y in range(len(student_requests))] 
+  class_weight = [[0 for x in range(len(courses.keys()))] for y in range(len(student_requests))]
 
   # # Populate class weight matrix
   # for i in range(len(student_requests)):
-  #   for j in 
+  #   for j in
 
   solver = pywraplp.Solver('SolveAssignmentProblemMIP',
                            pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
@@ -122,7 +140,7 @@ def main():
 
         # print("Here")
       class_assign[i, j] = solver.BoolVar('class_assign[%i,%i]' % (i, j))
-    
+
     # if (i == 1735):
     #   print(i)
     #   print(class_year)
@@ -154,9 +172,9 @@ def main():
     # output.writerow(['Spam'] * 5 + ['Baked Beans'])
     # spamwriter.writerow(['Spam', 'Lovely Spam', 'Wonderful Spam'])
     output.writerow(['Total score =', str(solver.Objective().Value())])
-    
+
     output_nested_list = []
-    
+
     for i in range(len(student_requests)):
       temp_output_list = []
       temp_output_list.append(str(i + 1))

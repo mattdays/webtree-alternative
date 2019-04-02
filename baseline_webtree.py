@@ -48,7 +48,7 @@ def read_file(filename):
 
             students_by_class[class_year].add(id)
             courses[crn] = int(row['COURSE_CEILING'])
-            
+
     return student_requests, students_by_class, courses
 
 
@@ -64,7 +64,7 @@ def assign_random_numbers(students_by_class):
         students_by_class - a dictionary mapping class years to student
                             IDs, indicating which students are seniors,
                             juniors, etc.
-                            
+
     Returns:
         A dictionary mapping class year to a list of four lists, each
         of which represents the scheduling order for the appropriate pass.
@@ -73,7 +73,7 @@ def assign_random_numbers(students_by_class):
     # Randomly permute the ordering of students in each class year.
     for class_year in students_by_class:
         students = students_by_class[class_year]
-        
+
         # list1 and list3 are independently random permutations; list2 and
         # list4 are the complements of number1 and number3 wrt the class size.
         list1 = list(students)
@@ -111,7 +111,7 @@ def assign_student(student, courses):
                 return requested_course
         except KeyError: # student didn't fill in preference, continue
             pass
-        
+
         # No space (or student didn't specify this node), try next course
         student.advance_preference(False)
 
@@ -133,7 +133,7 @@ def run_webtree(student_requests, students_by_class, courses, random_ordering):
     # Initially, no one has any courses assigned
     for id in student_requests:
         assignments[id] = []
-        
+
     # Course assignment is a 4-pass process. Students in the class
     # 'OTHER' get to go after we cycle through SENIORS-->FIRST_YEARS
     # first. The registrar seems to handle them arbitrarily anyway.
@@ -160,16 +160,33 @@ def run_webtree(student_requests, students_by_class, courses, random_ordering):
     # student schedules further (especially those who received fewer than 4
     # courses). But again, details are unclear and no one can quite describe
     # what *precisely* happens during this phase. So we skip that here.
-                                        
+
     return assignments
 
 def class_preference(tree, branch):
     weight = 0
+    diversions = 0
     if (branch < 4):
         weight = branch * tree
     else:
         weight = 21 + branch
-    return 26 - weight
+    # conversions to diversions
+    if ((weight == 25) or (weight == 24) or (weight == 22)):
+        diversions += 7
+    elif((weight == 23) or (weight == 21) or (weight == 20) or (weight == 18) or (weight == 17) or (weight == 15) or (weight == 4)):
+        diversions += 6
+    elif((weight == 19) or (weight == 16) or (weight == 14) or (weight == 13) or (weight == 11) or (weight == 10) or (weight == 8)):
+        diversions += 5
+    elif((weight == 12) or (weight == 9) or (weight == 7) or (weight == 6)):
+        diversions += 4
+    elif((weight == 5) or (weight == 3)):
+        diversions += 3
+    elif(weight == 2):
+        diversions += 2
+    elif(weight == 1):
+        diversions += 1
+
+    return diversions
 
 def main():
     if (len(sys.argv) != 2):
@@ -183,7 +200,7 @@ def main():
         print("***********************************************************")
         print()
         return
-    
+
     # Read in data
     student_requests, students_by_class, courses = read_file(sys.argv[1])
 
@@ -203,6 +220,6 @@ def main():
     #         print(course),
     #     print()
 
-        
+
 if __name__ == "__main__":
     main()
