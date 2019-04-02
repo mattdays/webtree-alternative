@@ -117,7 +117,9 @@ def main():
         temp = class_preference(sr_list[k][1], sr_list[k][2])
         temp_class = CLASS_MULTIPLIERS[class_year]
         # print(temp_class)
-        class_weight[i][course_list.index(sr_list[k][0])] = temp_class * temp
+        class_weight[i][course_list.index(sr_list[k][0])] = temp
+        # class_weight[i][course_list.index(sr_list[k][0])] = temp_class * temp
+
         # print("Here")
       class_assign[i, j] = solver.BoolVar('class_assign[%i,%i]' % (i, j))
     
@@ -134,7 +136,7 @@ def main():
   # Each worker is assigned to at most 1 task.
 
   for i in range(len(student_requests)):
-    solver.Add(solver.Sum([class_assign[i, j] for j in range(len(course_list))]) == 4)
+    solver.Add(solver.Sum([class_assign[i, j] for j in range(len(course_list))]) <= 4)
 
   # Each task is assigned to exactly one worker.
 
