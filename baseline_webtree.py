@@ -4,10 +4,12 @@ import sys
 import random
 from student import Student
 
-FIELDS = ['ID','CLASS','CRN','TREE','BRANCH','COURSE_CEILING',
-          'MAJOR','MAJOR2','SUBJ','NUMB','SEQ']
+FIELDS = ['ID', 'CLASS', 'CRN', 'TREE', 'BRANCH', 'COURSE_CEILING',
+          'MAJOR', 'MAJOR2', 'SUBJ', 'NUMB', 'SEQ']
 
-CLASS_MULTIPLIERS = {'SENI': 2.00, 'JUNI': 1.75, 'SOPH': 1.50, 'FRST': 1.25, 'OTHER': 1.0}
+# Multipliers to implement seniority preference
+CLASS_MULTIPLIERS = {'SENI': 2.00, 'JUNI': 1.75,
+                     'SOPH': 1.50, 'FRST': 1.25, 'OTHER': 1.0}
 
 
 def read_file(filename):
@@ -31,7 +33,6 @@ def read_file(filename):
                              'OTHER': set([])}
         courses = {}
         next(reader)
-        # reader.next() # consume the first line, which is just column headers
 
         for row in reader:
             id = int(row['ID'])
@@ -39,9 +40,9 @@ def read_file(filename):
             crn = int(row['CRN'])
             tree = int(row['TREE'])
             branch = int(row['BRANCH'])
-            if id in student_requests: # does this student already exist?
+            if id in student_requests:  # does this student already exist?
                 student_requests[id].add_request(crn, tree, branch)
-            else: # nope, create a new record
+            else:  # nope, create a new record
                 s = Student(id, class_year)
                 s.add_request(crn, tree, branch)
                 student_requests[id] = s
@@ -105,11 +106,11 @@ def assign_student(student, courses):
     while (student.can_advance_preference()):
         try:
             requested_course = student.get_next_course()
-            if (courses[requested_course] > 0): # there is space!
+            if (courses[requested_course] > 0):  # there is space!
                 courses[requested_course] -= 1
                 student.advance_preference(True)
                 return requested_course
-        except KeyError: # student didn't fill in preference, continue
+        except KeyError:  # student didn't fill in preference, continue
             pass
 
         # No space (or student didn't specify this node), try next course
@@ -145,13 +146,19 @@ def run_webtree(student_requests, students_by_class, courses, random_ordering):
             for student_id in students:
                 course = assign_student(student_requests[student_id], courses)
 
-                requests_values_list = list(student_requests[student_id].requests.values())
-                requests_key_list = list(student_requests[student_id].requests.keys())
+                requests_values_list = list(
+                    student_requests[student_id].requests.values())
+                requests_key_list = list(
+                    student_requests[student_id].requests.keys())
 
                 if course != None:
-                    branch = (requests_key_list[requests_values_list.index(course)])[0]
-                    tree = (requests_key_list[requests_values_list.index(course)])[1]
-                    assignment_score += CLASS_MULTIPLIERS[class_year] * class_preference(tree, branch)
+                    branch = (
+                        requests_key_list[requests_values_list.index(course)])[0]
+                    tree = (
+                        requests_key_list[requests_values_list.index(course)])[1]
+                    # assignment_score += CLASS_MULTIPLIERS[class_year] * class_preference(tree, branch)
+                    assignment_score += class_preference(tree, branch)
+
                     # print(class_preference(tree, branch))
                     assignments[student_id].append(course)
     print(assignment_score)
@@ -162,6 +169,7 @@ def run_webtree(student_requests, students_by_class, courses, random_ordering):
     # what *precisely* happens during this phase. So we skip that here.
 
     return assignments
+
 
 def class_preference(tree, branch):
     weight = 0
@@ -187,6 +195,7 @@ def class_preference(tree, branch):
         diversions += 1
 
     return diversions
+
 
 def main():
     if (len(sys.argv) != 2):
